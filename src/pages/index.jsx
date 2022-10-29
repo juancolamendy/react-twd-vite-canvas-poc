@@ -3,28 +3,26 @@ import { useState, useRef, useEffect } from 'react';
 import { Stage, Layer, Image, Transformer, Circle } from 'react-konva';
 import useImage from "use-image";
 
-const BgImage = (props) => {
+const BgImage = ({imageUrl, ...rest}) => {
   // hooks
-  const [image] = useImage(
-    "https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg"
-  );
+  const [image] = useImage(imageUrl, 'Anonymous');
 
   // render out
   return (<Image 
     image={image} 
-    {...props}
+    {...rest}
   />);
 };
 
 const URLImage = ({
   image,
-  shapeProps,
   unSelectShape,
   isSelected,
   onSelect,
   onChange,
   stageScale,
-  onDelete
+  onDelete,
+  shapeProps
 }) => {
   // refs
   const shapeRef = useRef();
@@ -32,7 +30,7 @@ const URLImage = ({
   const deleteButton = useRef();
 
   // hooks
-  const [img] = useImage(image.src);
+  const [img] = useImage(image.src, 'Anonymous');
 
   useEffect(() => {
     if (isSelected) {
@@ -68,6 +66,8 @@ const URLImage = ({
         image={img}
         x={image.x}
         y={image.y}
+        width={image.width}
+        height={image.height}
         onMouseEnter={onMouseEnter}
         onMouseLeave={onMouseLeave}
         // I will use offset to set origin to the center of the image
@@ -131,11 +131,16 @@ const URLImage = ({
   );
 }
 
-const WIDTH = 734;
-const HEIGHT = 512;
+const WIDTH        = 734;
+const HEIGHT       = 512;
+const bgImageUrl   = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
+const subjImageUrl = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
 
 const createImage = ({src, ...rest}) => {
-  return {src, ...rest};
+  return {
+    src,
+    ...rest,
+  };
 }
 
 function Index() {
@@ -158,6 +163,23 @@ function Index() {
     }
   };
 
+  const unSelectShape = (prop) => {
+    selectShape(prop);
+  };  
+
+  const onDeleteImage = (node) => {
+    console.log("onDeleteImage", node);
+    const newImages = [...images];
+    newImages.splice(node.index-1, 1);
+    setImages(newImages);
+  };
+
+  const handleRemove = (index) => {
+    const newList = images.filter((item) => item.index !== index);
+
+    setImages(newList);
+  }; 
+
   const handleNew = (e) => {
     e.preventDefault();
 
@@ -166,11 +188,24 @@ function Index() {
       setImages([
         ...images,
         createImage({
-          src: 'https://images.pexels.com/photos/9575875/pexels-photo-9575875.jpeg',
+          x: 815,
+          y: 571,
+          width: 100,
+          height: 50,
+          src: subjImageUrl,
       })]);
     } 
   }
 
+  const handleDownload = (e) => {
+    e.preventDefault();
+    if(stageRef && stageRef.current) {
+      var dataURL = stageRef.current.toDataURL();
+      console.log(dataURL);
+    }
+  }
+
+  console.log('-- images:', images);
   // render out
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -183,7 +218,10 @@ function Index() {
           >
             New
           </button>
-          <button type="button" className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800">
+          <button type="button"
+            className="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:ring-blue-300 font-medium rounded-lg text-sm px-5 py-2.5 mr-2 mb-2 dark:bg-blue-600 dark:hover:bg-blue-700 focus:outline-none dark:focus:ring-blue-800"
+            onClick={handleDownload}
+          >
             Download
           </button>
         </div>
@@ -196,7 +234,6 @@ function Index() {
 
               ref={stageRef}
 
-              draggable={true}
               style={{
                 border: "1px solid grey"
               }} 
@@ -206,11 +243,34 @@ function Index() {
             >
               <Layer>
                 <BgImage
+                  imageUrl={bgImageUrl}
                   x={0}
                   y={0}
                   width={WIDTH}
                   height={HEIGHT}
                 />
+                {images.map((image, index) => {
+                  return (
+                    <URLImage
+                      image={image}
+                      key={index}
+                      shapeProps={image}
+                      stageScale={1}
+                      isSelected={image === selectedId}
+                      unSelectShape={unSelectShape}
+                      onClick={handleRemove}
+                      onSelect={() => {
+                        selectShape(image);
+                      }}
+                      onChange={(newAttrs) => {
+                        const rects = images.slice();
+                        rects[index] = newAttrs;
+                        setImages(rects);
+                      }}
+                      onDelete={onDeleteImage}
+                    />
+                  );
+                })}                
               </Layer>
             </Stage>
 

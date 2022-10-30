@@ -16,32 +16,30 @@ const BgImage = ({imageUrl, ...rest}) => {
 
 const URLImage = ({
   image,
-  unSelectShape,
   isSelected,
-  onSelect,
-  onChange,
   stageScale,
+  onSelect,
+  onChange,  
   onDelete,
-  shapeProps
 }) => {
   // refs
-  const shapeRef = useRef();
-  const trRef = useRef();
-  const deleteButton = useRef();
+  const refShape = useRef();
+  const refTransformer = useRef();
 
   // hooks
   const [img] = useImage(image.src, 'Anonymous');
 
   useEffect(() => {
+    console.log('-- isSelected', isSelected);
     if (isSelected) {
       // we need to attach transformer manually
-      trRef.current && trRef.current.nodes([shapeRef.current]);
-      trRef.current && trRef.current.getLayer().batchDraw();
+      refTransformer.current && refTransformer.current.nodes([refShape.current]);
+      refTransformer.current && refTransformer.current.getLayer().batchDraw();
     }
   }, [isSelected]);
 
   // functions
-  const onMouseEnter = (e) => {
+  const handleMouseEnter = (e) => {
     if (isSelected) {
       e.target.getStage().container().style.cursor = "move";
     }
@@ -50,37 +48,40 @@ const URLImage = ({
     }
   };
 
-  const onMouseLeave = (e) => {
+  const handleMouseLeave = (e) => {
     e.target.getStage().container().style.cursor = "default";
-  };  
-
-  const handleDelete = () => {
-    unSelectShape(null);
-    onDelete(shapeRef.current);
   };
 
+  const handleBoundBox = (oldBox, newBox) => {
+    // limit resize
+    if (newBox.width < 5 || newBox.height < 5) {
+      return oldBox;
+    }
+    return newBox;
+  };
+
+  //console.log(' -- URLImage:', image);
   // render out
   return (
     <>
       <Image
+        ref={refShape}
         image={img}
         x={image.x}
         y={image.y}
         width={image.width}
         height={image.height}
-        onMouseEnter={onMouseEnter}
-        onMouseLeave={onMouseLeave}
-        // I will use offset to set origin to the center of the image
-        offsetX={img ? img.width / 2 : 0}
-        offsetY={img ? img.height / 2 : 0}
-        onClick={onSelect}
-        onTap={onSelect}
-        ref={shapeRef}
-        {...shapeProps}
         draggable
+        // offset to set origin to the center of the image
+        offsetX={img ? img.width / 2 : 0}
+        offsetY={img ? img.height / 2 : 0}        
+        onMouseEnter={handleMouseEnter}
+        onMouseLeave={handleMouseLeave}
+        onClick={onSelect}
+        onTap={onSelect}        
         onDragEnd={(e) => {
           onChange({
-            ...shapeProps,
+            ...image,
             x: e.target.x(),
             y: e.target.y()
           });
@@ -90,7 +91,7 @@ const URLImage = ({
           // and NOT its width or height
           // but in the store we have only width and height
           // to match the data better we will reset scale on transform end
-          const node = shapeRef.current;
+          const node = refShape.current;
           const scaleX = node.scaleX();
           const scaleY = node.scaleY();
 
@@ -98,7 +99,7 @@ const URLImage = ({
           node.scaleX(1);
           node.scaleY(1);
           onChange({
-            ...shapeProps,
+            ...image,
             x: node.x(),
             y: node.y(),
             // set minimal value
@@ -106,24 +107,18 @@ const URLImage = ({
             height: Math.max(node.height() * scaleY)
           });
         }}
+        {...image}
       />
       {isSelected && (
         <Transformer
-          ref={trRef}
-          boundBoxFunc={(oldBox, newBox) => {
-            // limit resize
-            if (newBox.width < 5 || newBox.height < 5) {
-              return oldBox;
-            }
-            return newBox;
-          }}
+          ref={refTransformer}
+          boundBoxFunc={handleBoundBox}
         >
           <Circle
+            x={refShape.current.width() * stageScale}
             radius={8}
             fill="red"
-            ref={deleteButton}
-            onClick={handleDelete}
-            x={shapeRef.current.width() * stageScale}
+            onClick={() => onDelete(refShape.current)}
           ></Circle>
         </Transformer>
       )}
@@ -131,10 +126,14 @@ const URLImage = ({
   );
 }
 
-const WIDTH        = 734;
-const HEIGHT       = 512;
-const bgImageUrl   = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
-const subjImageUrl = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
+const WIDTH          = 734;
+const HEIGHT         = 512;
+const BG_IMAGE_URL   = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
+const SUBJ_IMAGE_URL = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
+const SUBJ_X         = 815;
+const SUBJ_Y         = 571;
+const SUBJ_WIDTH     = 100;
+const SUBJ_HEIGHT    = 50;
 
 const createImage = ({src, ...rest}) => {
   return {
@@ -145,10 +144,10 @@ const createImage = ({src, ...rest}) => {
 
 function Index() {
   // refs
-  const stageRef = useRef();
+  const refStage = useRef();
 
   // state
-  const [selectedId, selectShape] = useState(null);
+  const [selectedImage, selectImage] = useState(null);
   const [images, setImages] = useState([]);  
 
   // hooks
@@ -159,48 +158,35 @@ function Index() {
     // deselect when clicked on empty area
     const clickedOnEmpty = e.target === e.target.getStage();
     if (clickedOnEmpty) {
-      selectShape(null);
+      selectImage(null);
     }
   };
 
-  const unSelectShape = (prop) => {
-    selectShape(prop);
-  };  
-
-  const onDeleteImage = (node) => {
-    console.log("onDeleteImage", node);
+  const handleDeleteImage = (image) => {
+    console.log("handleDeleteImage", image);
+    selectImage(null);
     const newImages = [...images];
-    newImages.splice(node.index-1, 1);
+    newImages.splice(image.index-1, 1);
     setImages(newImages);
   };
 
-  const handleRemove = (index) => {
-    const newList = images.filter((item) => item.index !== index);
-
-    setImages(newList);
-  }; 
-
-  const handleNew = (e) => {
-    e.preventDefault();
-
-    if(stageRef && stageRef.current) {
-      // add image
-      setImages([
-        ...images,
-        createImage({
-          x: 815,
-          y: 571,
-          width: 100,
-          height: 50,
-          src: subjImageUrl,
-      })]);
-    } 
+  const handleNew = () => {
+    // add image
+    setImages([
+      ...images,
+      createImage({
+        x: SUBJ_X,
+        y: SUBJ_Y,
+        width: SUBJ_WIDTH,
+        height: SUBJ_HEIGHT,
+        src: SUBJ_IMAGE_URL,
+    })]);
   }
 
   const handleDownload = (e) => {
     e.preventDefault();
-    if(stageRef && stageRef.current) {
-      var dataURL = stageRef.current.toDataURL();
+    if(refStage && refStage.current) {
+      var dataURL = refStage.current.toDataURL();
       console.log(dataURL);
     }
   }
@@ -232,7 +218,7 @@ function Index() {
               width={WIDTH}
               height={HEIGHT}
 
-              ref={stageRef}
+              ref={refStage}
 
               style={{
                 border: "1px solid grey"
@@ -243,7 +229,7 @@ function Index() {
             >
               <Layer>
                 <BgImage
-                  imageUrl={bgImageUrl}
+                  imageUrl={BG_IMAGE_URL}
                   x={0}
                   y={0}
                   width={WIDTH}
@@ -254,20 +240,15 @@ function Index() {
                     <URLImage
                       image={image}
                       key={index}
-                      shapeProps={image}
                       stageScale={1}
-                      isSelected={image === selectedId}
-                      unSelectShape={unSelectShape}
-                      onClick={handleRemove}
-                      onSelect={() => {
-                        selectShape(image);
-                      }}
+                      isSelected={image === selectedImage}
+                      onSelect={() => selectImage(image)}
                       onChange={(newAttrs) => {
                         const rects = images.slice();
                         rects[index] = newAttrs;
                         setImages(rects);
                       }}
-                      onDelete={onDeleteImage}
+                      onDelete={handleDeleteImage}
                     />
                   );
                 })}                

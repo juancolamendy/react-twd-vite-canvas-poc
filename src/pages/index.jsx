@@ -10,6 +10,7 @@ const BgImage = ({imageUrl, ...rest}) => {
   // render out
   return (<Image 
     image={image} 
+    draggable
     {...rest}
   />);
 };
@@ -23,18 +24,18 @@ const URLImage = ({
   onDelete,
 }) => {
   // refs
-  const refShape = useRef();
+  const refImage = useRef();
   const refTransformer = useRef();
 
   // hooks
   const [img] = useImage(image.src, 'Anonymous');
 
   useEffect(() => {
-    console.log('-- isSelected', isSelected);
+    //console.log('-- isSelected', isSelected);
     if (isSelected) {
       // we need to attach transformer manually
-      refTransformer.current && refTransformer.current.nodes([refShape.current]);
-      refTransformer.current && refTransformer.current.getLayer().batchDraw();
+      refTransformer && refTransformer.current && refTransformer.current.nodes([refImage.current]);
+      refTransformer && refTransformer.current && refTransformer.current.getLayer().batchDraw();
     }
   }, [isSelected]);
 
@@ -60,21 +61,17 @@ const URLImage = ({
     return newBox;
   };
 
-  //console.log(' -- URLImage:', image);
+  console.log(' -- URLImage:', image);
   // render out
   return (
     <>
       <Image
-        ref={refShape}
+        ref={refImage}
         image={img}
-        x={image.x}
-        y={image.y}
-        width={image.width}
-        height={image.height}
         draggable
         // offset to set origin to the center of the image
         offsetX={img ? img.width / 2 : 0}
-        offsetY={img ? img.height / 2 : 0}        
+        offsetY={img ? img.height / 2 : 0}
         onMouseEnter={handleMouseEnter}
         onMouseLeave={handleMouseLeave}
         onClick={onSelect}
@@ -86,26 +83,24 @@ const URLImage = ({
             y: e.target.y()
           });
         }}
-        onTransformEnd={(e) => {
-          // transformer is changing scale of the node
-          // and NOT its width or height
-          // but in the store we have only width and height
-          // to match the data better we will reset scale on transform end
-          const node = refShape.current;
-          const scaleX = node.scaleX();
-          const scaleY = node.scaleY();
+        onTransformEnd={(e) => {          
+          const node = refImage.current;
+          console.log('-- onTransformEnd: ', node);
+          // const scaleX = node.scaleX();
+          // const scaleY = node.scaleY();
 
           // we will reset it back
-          node.scaleX(1);
-          node.scaleY(1);
-          onChange({
-            ...image,
-            x: node.x(),
-            y: node.y(),
-            // set minimal value
-            width: Math.max(5, node.width() * scaleX),
-            height: Math.max(node.height() * scaleY)
-          });
+          // node.scaleX(1);
+          // node.scaleY(1);
+          // console.log(`scales: scaleX:${scaleX}, scaleY:${scaleY}`);
+          // onChange({
+          //   ...image,
+          //   // x: node.x(),
+          //   // y: node.y(),
+          //   // set minimal value
+          //   width: Math.max(5, node.width() * scaleX),
+          //   height: Math.max(node.height() * scaleY)
+          // });
         }}
         {...image}
       />
@@ -113,12 +108,13 @@ const URLImage = ({
         <Transformer
           ref={refTransformer}
           boundBoxFunc={handleBoundBox}
+          centeredScaling={false}
         >
           <Circle
-            x={refShape.current.width() * stageScale}
+            x={refImage.current.width() * stageScale}
             radius={8}
             fill="red"
-            onClick={() => onDelete(refShape.current)}
+            onClick={() => onDelete(refImage.current)}
           ></Circle>
         </Transformer>
       )}
@@ -130,14 +126,17 @@ const WIDTH          = 734;
 const HEIGHT         = 512;
 const BG_IMAGE_URL   = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
 const SUBJ_IMAGE_URL = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
-const SUBJ_X         = 815;
-const SUBJ_Y         = 571;
-const SUBJ_WIDTH     = 100;
-const SUBJ_HEIGHT    = 50;
+const SUBJ_X         = 512;
+const SUBJ_Y         = 512;
+const SUBJ_WIDTH     = 120;
+const SUBJ_HEIGHT    = 100;
 
 const createImage = ({src, ...rest}) => {
   return {
     src,
+    rotation: 0,
+    scaleX: 1,
+    scaleY: 1,
     ...rest,
   };
 }
@@ -153,11 +152,10 @@ function Index() {
   // hooks
 
   // functions
-  const handleDeselect = (e) => {
-    console.log('-- handleDeselect');
+  const handleDeselect = (e) => {    
     // deselect when clicked on empty area
-    const clickedOnEmpty = e.target === e.target.getStage();
-    if (clickedOnEmpty) {
+    // console.log('-- handleDeselect: index clicked:', e.target.index, e.target.index === 0);
+    if (e.target.index === 0) {
       selectImage(null);
     }
   };
@@ -243,10 +241,12 @@ function Index() {
                       stageScale={1}
                       isSelected={image === selectedImage}
                       onSelect={() => selectImage(image)}
-                      onChange={(newAttrs) => {
+                      onChange={(image) => {
+                        console.log('-- onChange:', image);
                         const rects = images.slice();
-                        rects[index] = newAttrs;
+                        rects[index] = image;
                         setImages(rects);
+                        selectImage(image);
                       }}
                       onDelete={handleDeleteImage}
                     />

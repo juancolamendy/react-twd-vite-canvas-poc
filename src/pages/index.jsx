@@ -2,11 +2,13 @@ import { useState, useRef } from 'react';
 
 import { Stage, Layer } from 'react-konva';
 
+import { triggerBase64Download } from 'react-base64-downloader';
+
 import BgImage from '../components/canvas/BgImage';
 import ImageShape from '../components/canvas/ImageShape';
 
-const WIDTH           = 512;
-const HEIGHT          = 512;
+const WIDTH           = 768;
+const HEIGHT          = 768;
 const BG_IMAGE_URL    = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
 const SUBJ_IMAGE_URL  = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
 const SUBJ_X          = 0;
@@ -85,14 +87,17 @@ function Index() {
   }
 
   const handleDownload = () => {
-    // download the image
+    // download the image from the canvas
     if(stageRef && stageRef.current) {
-      var dataURL = stageRef.current.toDataURL();
-      console.log(dataURL);
+      var data = stageRef.current.toDataURL({
+        pixelRatio: 2 // or other value you need
+      });
+      console.log(data);
+      triggerBase64Download(data, 'background');
     }
   }
 
-  console.log('-- images:', images);
+  // console.log('-- images:', images);
   // render out
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -115,7 +120,7 @@ function Index() {
 
         <div className="w-full flex flex-grow p-6 items-center justify-center">
             <div              
-              className="max-w-[600px] mx-auto border border-4 border-red-900 bg-blue-600 p-2"
+              className="max-w-[800px] mx-auto"
               tabIndex={0}
               onKeyDown={handleKeyDown}
             >
@@ -125,7 +130,6 @@ function Index() {
 
                 style={{
                   border: "1px solid grey",
-                  background: 'green',
                 }}
 
                 width={WIDTH}

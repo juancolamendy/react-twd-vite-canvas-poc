@@ -2,9 +2,11 @@ import { useRef, useEffect } from 'react';
 
 import useImage from "use-image";
 
-import { Image, Transformer, Circle } from 'react-konva';
+import { Image, Transformer } from 'react-konva';
 
-const ImageShape = ({shapeProps, id, isSelected, onSelect, onChange}) => {
+const MIN_SIZE = 5;
+
+const ImageShape = ({shapeProps, isSelected, onSelect, onChange}) => {
   // refs
   const imageRef = useRef();
   const transformerRef = useRef();
@@ -22,7 +24,7 @@ const ImageShape = ({shapeProps, id, isSelected, onSelect, onChange}) => {
   }, [isSelected]);
 
   // functions
-  const handleMouseEnter = (e) => {
+  const handleMouseEnter = e => {
     if (isSelected) {
       e.target.getStage().container().style.cursor = "move";
     }
@@ -31,33 +33,32 @@ const ImageShape = ({shapeProps, id, isSelected, onSelect, onChange}) => {
     }
   };
 
-  const handleMouseLeave = (e) => {
+  const handleMouseLeave = e => {
     e.target.getStage().container().style.cursor = "default";
   };
 
   const handleSelect = () => {
-    onSelect && typeof onSelect === 'function' && onSelect(id);
+    onSelect && typeof onSelect === 'function' && onSelect(shapeProps.id);
   }
 
   const handleBoundBox = (oldBox, newBox) => {
     console.log('-- handleBoundBox');
     // limit resize
-    if (newBox.width < 5 || newBox.height < 5) {
+    if (newBox.width < MIN_SIZE || newBox.height < MIN_SIZE) {
       return oldBox;
     }
     return newBox;
   };
 
-  const handleDragEnd = (e) => {
+  const handleDragEnd = e => {
     onChange({
-      id,
       ...shapeProps,
       x: e.target.x(),
       y: e.target.y(),
     });
   };
 
-  const handleTransformEnd = (e) => {
+  const handleTransformEnd = e => {
     console.log('--- handleTransformEnd');
     const node = imageRef.current;
     const scaleX = node.scaleX();
@@ -67,17 +68,16 @@ const ImageShape = ({shapeProps, id, isSelected, onSelect, onChange}) => {
     node.scaleX(1);
     node.scaleY(1);
     onChange({
-      id,
       ...shapeProps,
       x: node.x(),
       y: node.y(),
       // set minimal value
-      width: Math.max(5, node.width() * scaleX),
-      height: Math.max(5, node.height() * scaleY),
+      width: Math.max(MIN_SIZE, node.width() * scaleX),
+      height: Math.max(MIN_SIZE, node.height() * scaleY),
     });
   };
 
-  //console.log('-- ImageShape:', id, isSelected, shapeProps);
+  //console.log('-- ImageShape:', isSelected, shapeProps);
   // render out
   return (
   <>
@@ -91,19 +91,13 @@ const ImageShape = ({shapeProps, id, isSelected, onSelect, onChange}) => {
     onClick={handleSelect}
     onTap={handleSelect}
     onDragEnd={handleDragEnd}
-    onTransformEnd={handleTransformEnd}    
+    onTransformEnd={handleTransformEnd}
   />
   {isSelected && (
     <Transformer
       ref={transformerRef}
       boundBoxFunc={handleBoundBox}
     >
-      <Circle
-        x={imageRef && imageRef.current ? imageRef.current.width() : 0}
-        radius={8}
-        fill="red"
-        onClick={() => console.log('delete onClick')}
-      ></Circle>
     </Transformer>
   )}  
   </>

@@ -5,23 +5,24 @@ import { Stage, Layer } from 'react-konva';
 import BgImage from '../components/canvas/BgImage';
 import ImageShape from '../components/canvas/ImageShape';
 
-const WIDTH          = 512;
-const HEIGHT         = 512;
-const BG_IMAGE_URL   = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
-const SUBJ_IMAGE_URL = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
-const SUBJ_X         = 0;
-const SUBJ_Y         = 0;
-const SUBJ_WIDTH     = 100;
-const SUBJ_HEIGHT    = 100;
+const WIDTH           = 512;
+const HEIGHT          = 512;
+const BG_IMAGE_URL    = 'https://images.pexels.com/photos/1731660/pexels-photo-1731660.jpeg';
+const SUBJ_IMAGE_URL  = 'https://bigfork.org/wp-content/uploads/2018/06/Coca-Cola-8-oz-Glass-Bottle-002.jpg';
+const SUBJ_X          = 0;
+const SUBJ_Y          = 0;
+const SUBJ_WIDTH      = 100;
+const SUBJ_HEIGHT     = 100;
+const DELETE_KEY_CODE = 8;     
 
-const createImage = ({src, ...rest}) => {
+const createImage = ({src, id, ...rest}) => {
   return {
     src,
+    id: id,
     x: SUBJ_X,
     y: SUBJ_Y,
     width: SUBJ_WIDTH,
-    height: SUBJ_HEIGHT,    
-    isSelected: false,
+    height: SUBJ_HEIGHT,
     ...rest,
   };
 }
@@ -37,30 +38,32 @@ function Index() {
   // hooks
 
   // functions
-  const handleDeselect = (e) => {
+  const handleDeselect = e => {
     const clickedOnEmpty = e.target === e.target.getStage();
-    console.log('-- clickedOnEmpty', clickedOnEmpty);
+    //console.log('-- clickedOnEmpty', clickedOnEmpty);
     if(clickedOnEmpty) {
       setSelectedId(null);
     }    
   };
 
-  const handleSelect = (id) => {
+  const handleSelect = id => {
     setSelectedId(id);
   }
 
-  // const handleDelete = (image) => {
-  //   console.log("handleDelete", image);
-  //   selectImage(null);
-  //   const newImages = [...images];
-  //   newImages.splice(image.index-1, 1);
-  //   setImages(newImages);
-  // };
+  const handleKeyDown = e => {
+    console.log('-- onKeyDown:', selectedId);
+    if (e.keyCode === DELETE_KEY_CODE && selectedId !== undefined && selectedId !== null) {
+      console.log('-- delete:', selectedId);
+      const tmpImgs = images.filter(img => img.id !== selectedId);
+      setImages(tmpImgs);
+      setSelectedId(null);
+    }    
+  };
 
-  const handleChange = (data) => {
+  const handleChange = data => {
     console.log('-- onChange:', data);
-    const tmpImgs = images.map((img, i) => {
-      if(data.id === i) {
+    const tmpImgs = images.map(img => {
+      if(data.id === img.id) {
         return {
           ...img, ...data,
         }
@@ -77,6 +80,7 @@ function Index() {
       ...images,
       createImage({
         src: SUBJ_IMAGE_URL,
+        id: images.length+1,
     })]);
   }
 
@@ -88,7 +92,7 @@ function Index() {
     }
   }
 
-  // console.log('-- images:', images);
+  console.log('-- images:', images);
   // render out
   return (
     <div className="flex h-screen w-screen overflow-hidden">
@@ -110,7 +114,11 @@ function Index() {
         </div>
 
         <div className="w-full flex flex-grow p-6 items-center justify-center">
-            <div className="max-w-[600px] mx-auto border border-4 border-red-900 bg-blue-600 p-2">
+            <div              
+              className="max-w-[600px] mx-auto border border-4 border-red-900 bg-blue-600 p-2"
+              tabIndex={0}
+              onKeyDown={handleKeyDown}
+            >
 
               <Stage
                 ref={stageRef}
@@ -137,11 +145,9 @@ function Index() {
 
                   { images.map((img, i) => (
                     <ImageShape
-                      id={i}
                       key={i}
-                      src={img.src}
                       shapeProps={img}
-                      isSelected={i===selectedId}                      
+                      isSelected={img.id === selectedId}
                       onSelect={handleSelect}
                       onChange={handleChange}
                     />
